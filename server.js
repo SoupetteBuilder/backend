@@ -1,34 +1,31 @@
 const express = require('express');
 const app = express();
 const port = 3001;
+const sqlite3 = require('sqlite3').verbose();
+const db = new sqlite3.Database(':memory:');
+
+require('dotenv').config();
+
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
 });
 
-//Connection to the DB
-
-const mongoose = require('mongoose');
-require('dotenv').config();
-
-const uri = process.env.MONGODB_URI;
-
-mongoose.connect(uri, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-});
-
-const connection = mongoose.connection;
-
-connection.once('open', () => {
-  console.log("MongoDB database connection established successfully");
+// Initialize the users table
+db.serialize(function() {
+  db.run("CREATE TABLE users (email TEXT UNIQUE, password TEXT)");
 });
 
 app.use(express.json());
 
-const usersRouter = require('./routes/users');
+const usersRouter = require('./routes/users')(db);
 app.use('/users', usersRouter);
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
+});
+
+process.on('SIGINT', () => {
+  db.close();
+  process.exit(0);
 });
